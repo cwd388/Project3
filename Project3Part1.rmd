@@ -1,0 +1,123 @@
+Problem Set 3: Part 1
+========================================================
+- Chad Dunham
+
+Version Check:
+print(version$version.string)
+
+Packages Used
+
+randomForest: 4.6.7
+
+party: 1.0.13
+
+
+
+Installing needed packages
+
+```{r}
+install.packages("randomForest", dependencies=T)
+library(randomForest)
+
+install.packages("party", dependencies=T)
+library(party)
+
+#Version Check
+packageVersion("randomForest")
+packageVersion("party")
+```
+
+Import the data
+
+```{r}
+titanicData = read.csv("titanic3.csv")
+head(titanicData)
+```
+
+Creating the training and testing data
+
+```{r}
+
+sampleSplit = sample(2, nrow(titanicData), replace=T, prob=c(.7, .5))
+titanicTrain = titanicData[sampleSplit==1,]
+titanicTest = titanicData[sampleSplit==2,]
+
+```
+
+======= TRAINING DATA SECTION =======
+
+Run glm of Titanic Data
+
+```{r}
+titanicSurvivalTrain = glm(survived ~ pclass + sex + pclass:sex + age + sibsp, family = binomial(logit), data=titanicTrain)
+
+summary(titanicSurvivalTrain)
+```
+
+
+Random Forest of Titanic Data
+
+```{r}
+titanicRandomForestTrain = randomForest(as.factor(survived) ~ pclass + sex + age + sibsp, data=titanicTrain, ntree=5000, importance = T, na.action = na.omit)
+
+titanicRandomForestTrain
+
+plot(titanicRandomForestTrain)
+```
+
+Conditional Tree Model of Titanic Data
+
+```{r}
+titanicCondTreeTrain = ctree(as.factor(survived) ~ pclass + sex + age + sibsp, data=titanicTrain)
+
+titanicCondTreeTrain
+
+plot(titanicCondTreeTrain)
+```
+
+
+======= TEST DATA SECTION =======
+
+Run glm of Titanic Data
+
+```{r}
+titanicSurvivalTest = glm(survived ~ pclass + sex + pclass:sex + age + sibsp, family = binomial(logit), data=titanicTest)
+
+summary(titanicSurvivalTest)
+```
+
+
+Random Forest of Titanic Data
+
+```{r}
+titanicRandomForestTest = randomForest(as.factor(survived) ~ pclass + sex + age + sibsp, data=titanicTest, ntree=5000, importance = T, na.action = na.omit)
+
+titanicRandomForestTest
+plot(titanicRandomForestTest)
+
+```
+
+Conditional Tree Model of Titanic Data
+
+```{r}
+titanicCondTreeTest = ctree(as.factor(survived) ~ pclass + sex + age + sibsp, data=titanicTest)
+
+titanicCondTreeTest
+plot(titanicCondTreeTest)
+
+```
+
+Confusion Matrices
+
+=== Training Data ===
+## Confusion matrix:
+##     0   1 class.error
+## 0 331  53      0.1380
+## 1  84 159      0.3457
+
+=== Test Data ===
+## Confusion matrix:
+##     0   1 class.error
+## 0 214  21     0.08936
+## 1  66 118     0.35870
+

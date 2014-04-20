@@ -1,0 +1,199 @@
+Project 3, Part 2
+- Chad Dunham
+==================================================
+
+
+Packages and Versions Used:
+
+R: 3.0.2
+
+plyr: 1.8.1
+
+lattice: 0.20.27
+
+xtable: 1.7.3
+
+
+
+Version Check:
+```{r}
+print(version$version.string)
+```
+
+
+Loading and verifying the Gapminder data
+
+```{r}
+gdURL = "http://www.stat.ubc.ca/~jenny/notOcto/STAT545A/examples/gapminder/data/gapminderDataFiveYear.txt"
+gDat = read.delim(file = gdURL)
+
+str(gDat)
+```
+
+Data aggregation using ddply
+
+```{r}
+(snippet = subset(gDat, country == "Canada"))
+
+install.packages("plyr", dependencies = T)
+library(plyr)
+
+#Version Check
+packageVersion("plyr")
+
+(maxLeByCont = ddply(gDat, ~ continent, summarize, maxLifeExp = max(lifeExp)))
+
+str(maxLeByCont)
+levels(maxLeByCont$continent)
+```
+
+GDP per capita function (code not included on website)
+
+```{r}
+(minGDPPerCap = ddply(gDat, ~ continent, summarize, minGDP = min(gdpPercap)))
+
+```
+
+Continuing using plyr
+
+```{r}
+ddply (gDat, ~continent, summarize, nUniqCountries = length(unique(country)))
+
+ddply(gDat, ~ continent, function(x) return(c(nUniqCountries = length(unique(x$country)))))
+
+ddply(gDat, ~ continent, summarize, minLifeExp = min(lifeExp), maxLifeExp = max(lifeExp), medGdpPercap = median(gdpPercap))
+
+```
+
+Using ddply to fit a linear regression modeling life expectancy
+
+```{r}
+
+install.packages("lattice")
+library(lattice)
+#Version Check
+packageVersion("lattice")
+
+
+jCountry = "France"
+(jDat = subset(gDat, country == jCountry))
+
+xyplot(lifeExp ~ year, jDat, type = c("p", "r"))
+
+jFit = lm(lifeExp ~ year, jDat)
+summary(jFit)
+
+(yearMin = min(gDat$year))
+
+jFit = lm(lifeExp ~ I(year - yearMin), jDat)
+summary(jFit)
+
+class(jFit)
+mode(jFit)
+
+str(jFit)
+names(jFit)
+jFit$coefficients
+coef(jFit)
+
+jFun = function(x) coef(lm(lifeExp ~ I(year - yearMin), x))
+jFun(jDat)
+
+jFun = function(x) {
+  estCoefs = coef(lm(lifeExp ~ I(year - yearMin), x))
+  names(estCoefs) = c("intercept", "slope")
+  return(estCoefs)
+}
+jFun(jDat)
+```
+
+Testing the new function
+
+```{r}
+jFun(subset(gDat, country == "Canada"))
+
+jFun(subset(gDat, country == "Uruguay"))
+
+jFun(subset(gDat, country == "India"))
+
+```
+
+Finalizing the function
+
+```{r}
+jCoefs = ddply(gDat, ~country, jFun)
+str(jCoefs)
+
+tail(jCoefs)
+
+```
+
+Reproducing the function in concise form:
+
+```{r}
+gdURL = "http://www.stat.ubc.ca/~jenny/notOcto/STAT545A/examples/gapminder/data/gapminderDataFiveYear.txt"
+gDat = read.delim(file = gdURL)
+yearMin = min(gDat$year)
+jFun = function(x) {
+  estCoefs = coef(lm(lifeExp ~ I(year - yearMin), x))
+  names(estCoefs) = c("intercept", "slope")
+  return(estCoefs)
+}
+jCoefs = ddply(gDat, ~country, jFun)
+```
+
+Using the xtable package make a nice table
+
+```{r results="asis"}
+
+install.packages("xtable", dependencies = T)
+library(xtable)
+
+#Version Check
+packageVersion("xtable")
+
+set.seed(916)
+foo = jCoefs[sample(nrow(jCoefs), size = 15), ]
+foo = xtable(foo)
+print(foo, type = "html", include.rownames = F)
+
+```
+
+Enhancing the ddply call and making a better table
+
+```{r}
+jCoefs = ddply(gDat, ~country + continent, jFun)
+str(jCoefs)
+
+tail(jCoefs)
+
+```
+
+```{r results="asis"} 
+set.seed(916)
+foo = jCoefs[sample(nrow(jCoefs), size = 15), ]
+foo = arrange(foo, intercept)
+foo = xtable(foo)
+print(foo, type = "html", include.rownames = F)
+```
+
+=================================================
+Q & A Section
+=================================================
+
+```{r}
+jFunTwoArgs = function(x, cvShift = 0) {
+  estCoefs = coef(lm(lifeExp ~ I(year - cvShift), x))
+  names(estCoefs) = c("intercept", "slope")
+  return(estCoefs)
+}
+
+jCoefsSilly = ddply(gDat, ~country, jFunTwoArgs)
+head(jCoefsSilly)
+
+jCoefsSane = ddply(gDat, ~country, jFunTwoArgs, cvShift = 1952)
+head(jCoefsSane)
+
+jCoefsBest = ddply(gDat, ~country, jFunTwoArgs, cvShift = min(gDat$year))
+head(jCoefsBest)
+```

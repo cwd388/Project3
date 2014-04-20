@@ -1,0 +1,188 @@
+Problem Set 3, Part 3
+========================================================
+- Chad Dunham
+
+Packages and Versions Used:
+
+R: 3.0.2
+
+cluster: 1.15.2
+
+Rattle: 3.0.2
+
+NcClust: 1.4
+
+flexclust: 1.3.4
+
+
+```{r}
+print(version$version.string)
+```
+
+Heirarchal Clustering Example
+=============================
+
+
+Installing required packages
+
+```{r}
+
+install.packages("cluster", dependencies=T)
+library(cluster)
+
+#Version check
+packageVersion("cluster")
+
+```
+
+Importing and quickly looking at the information
+
+```{r}
+
+cars = read.delim('cars.tab', stringsAsFactors=F)
+head(cars)
+
+```
+
+Trim the data.fram and standardize the data
+
+```{r}
+
+cars.use = cars[,-c(1,2)]
+medians = apply(cars.use, 2, median)
+mads = apply(cars.use, 2, mad)
+cars.use = scale(cars.use, center=medians, scale=mads)
+
+```
+
+Calculating a distance (Euclidean) matrix and creating a dendogram
+
+```{r}
+
+cars.dist = dist(cars.use)
+cars.hclust = hclust(cars.dist)
+plot(cars.hclust, labels = cars$Car, main = "Default from hclus")
+
+```
+
+Analyzing the cluster
+
+```{r}
+
+groups.3 = cutree(cars.hclust, 3)
+table(groups.3)
+
+counts = sapply(2:6, function(ncl) table(cutree(cars.hclust, ncl)))
+names(counts) = 2:6
+counts
+
+cars$Car[groups.3==1]
+
+sapply(unique(groups.3), function(g) cars$Car[groups.3 == g])
+
+groups.4 = cutree(cars.hclust, 4)
+sapply(unique(groups.4), function(g) cars$Car[groups.4 == g])
+
+table(groups.3, cars$Country)
+
+aggregate(cars.use, list(groups.3), median)
+
+aggregate(cars[,-c(1,2)], list(groups.3), median)
+
+a3 = aggregate(cars[,-c(1,2)], list(groups.3), median)
+data.frame(Cluster=a3[,1], Freq=as.vector(table(groups.3)), a3[,-1])
+
+a4 = aggregate(cars[,-c(1,2)], list(groups.4), median)
+data.frame(Cluster=a4[,1], Freq=as.vector(table(groups.4)), a4[,-1])
+
+```
+
+
+
+K-Means Clustering Example
+=============================
+
+Installing required packages
+
+```{r}
+install.packages("rattle")
+library(rattle)
+
+#version check
+packageVersion("rattle")
+
+
+install.packages("NbClust")
+library(NbClust)
+
+#version check
+packageVersion("NbClust")
+
+
+install.packages("flexclust")
+library(flexclust)
+
+#version check
+packageVersion("flexclust")
+
+```
+
+
+Setting up functions and standardizing data
+
+```{r}
+
+wssplot = function(data, nc=15, seed=1234) {
+  wss = (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:nc) {
+    set.seed(seed)
+    wss[i] = sum(kmeans(data, centers=i)$withinss)}
+  plot(1:nc, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+  }
+
+data(wine, package="rattle")
+head(wine)
+
+df = scale(wine[-1])
+
+```
+
+Determing Number of Clusters
+
+```{r}
+
+wssplot(df)
+set.seed(1234)
+nc = NbClust(df, min.nc=2, max.nc=15, method="kmeans")
+table(nc$Best.n[1,])
+
+barplot(table(nc$Best.n[1,]), xlab = "Number of Clusters", ylab = "Number of Criteria", main = "Number of Clusters Chosen by 26 Criteria")
+
+```
+
+
+K-Means Cluster Analysis
+
+```{r}
+
+set.seed(1234)
+
+fit.km = kmeans(df, 3, nstart=25)
+fit.km$size
+
+fit.km$centers
+
+aggregate(wine[-1], by=list(cluster=fit.km$cluster), mean)
+
+```
+
+Checking the effectiveness of the K-means Cluster
+
+```{r}
+
+ct.km = table(wine$Type, fit.km$cluster)
+ct.km
+
+randIndex(ct.km)
+
+```
